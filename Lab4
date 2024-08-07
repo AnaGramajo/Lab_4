@@ -1,0 +1,46 @@
+#include <Arduino.h>
+#include <driver/ledc.h>
+
+portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
+
+#define canalPWM 9
+#define freqPWM 50
+#define resPWM 10
+#define pinPWM 22
+
+#define B1 4
+#define B2 5
+
+// Interrupciones
+// Para incrementar
+void IRAM_ATTR B1_isr() {
+  portENTER_CRITICAL_ISR(&mux);
+    for(int i=30; i<135; i++) {
+    ledcWrite(canalPWM, i);
+    }
+  portEXIT_CRITICAL_ISR(&mux);
+}
+// Para disminuir
+void IRAM_ATTR B2_isr() {
+  portENTER_CRITICAL_ISR(&mux);
+    for(int j=135; j>30; j--) {
+    ledcWrite(canalPWM, j);
+    }
+  portEXIT_CRITICAL_ISR(&mux);
+}
+
+// put function declarations here:
+
+void setup() {
+  ledcSetup(canalPWM, freqPWM, resPWM);
+  ledcAttachPin(pinPWM, canalPWM);
+  pinMode(B1, INPUT_PULLDOWN);
+  pinMode(B2, INPUT_PULLUP);
+  ledcWrite(canalPWM, 0);
+  attachInterrupt(B1, B1_isr, RISING);
+  attachInterrupt(B2, B2_isr, FALLING);
+}
+
+void loop() {
+  delay(100);
+}

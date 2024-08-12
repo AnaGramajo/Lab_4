@@ -90,7 +90,7 @@ void loop() {
 // Si se presiona el botón de selección (B3)
   if (S_color == LOW && B_color == HIGH) {
     if (!controlServo) {
-      color = (color + 1) % 3; // Cambiar al siguiente LED (circular)
+      color = (color + 1) % 3; // Cambiar al siguiente LED
     } else {
       controlServo = false; // Salir del modo de control del servo
     }

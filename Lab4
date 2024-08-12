@@ -8,8 +8,11 @@ portMUX_TYPE mux = portMUX_INITIALIZER_UNLOCKED;
 #define resPWM 10
 #define pinPWM 22
 
+// Pines de los botones
 #define B1 4
 #define B2 5
+#define B3 32 // Botón B3 para seleccionar el LED o el modo de control del servo
+#define B4 33 // Botón B4 para ajustar el brillo
 
 //define leds
 #define ledR 14
@@ -34,10 +37,6 @@ void IRAM_ATTR B2_isr() {
   portEXIT_CRITICAL_ISR(&mux);
 }
 
-// Pines de los botones
-const int B3 = 32; // Botón B3 para seleccionar el LED
-const int B4 = 33; // Botón B4 para ajustar el brillo
-
 // Variables para gestionar el brillo
 int brillo[3] = {0, 0, 0}; // Almacenará el brillo actual de cada LED
 int color = 0; // 0: Rojo, 1: Verde, 2: Azul
@@ -46,10 +45,14 @@ int color = 0; // 0: Rojo, 1: Verde, 2: Azul
 int B_color = LOW;
 int B_brillo = LOW;
 
+// Variables para el servo
+int servoPosition = 30; // Posición inicial del servo
+bool controlServo = false; // Flag para alternar entre controlar el servo o los LEDs
 
 void setup() {
   ledcSetup(canalPWM, freqPWM, resPWM);
   ledcAttachPin(pinPWM, canalPWM);
+
   pinMode(B1, INPUT_PULLDOWN);
   pinMode(B2, INPUT_PULLUP);
   ledcWrite(canalPWM, 0);
@@ -72,6 +75,9 @@ void setup() {
   ledcAttachPin(ledV, 1);
   ledcSetup(2, 5000, 8); // Canal 2 para el LED azul
   ledcAttachPin(ledA, 2);
+
+  // Configuración inicial del servo
+  ledcWrite(canalPWM, servoPosition);
 }
 
 
@@ -81,23 +87,45 @@ void loop() {
   int S_color = digitalRead(B3);
   int S_brillo = digitalRead(B4);
 
-  // Si se presiona el botón de selección (B3)
+// Si se presiona el botón de selección (B3)
   if (S_color == LOW && B_color == HIGH) {
-    color = (color + 1) % 3; // Cambiar al siguiente LED (circular)
+    if (!controlServo) {
+      color = (color + 1) % 3; // Cambiar al siguiente LED (circular)
+    } else {
+      controlServo = false; // Salir del modo de control del servo
+    }
   }
   B_color = S_color;
 
-  // Si se presiona el botón de brillo (B4)
-  if (S_brillo == LOW && B_brillo == HIGH) {
-brillo[color] += 32; // Incrementar el brillo en 32 unidades (de 0 a 255)
+  // Si se presiona el botón de brillo (B4) en modo de control de LEDs
+  if (!controlServo && S_brillo == LOW && B_brillo == HIGH) {
+    brillo[color] += 32; // Incrementar el brillo en 32 unidades (de 0 a 255)
     if (brillo[color] > 255) {
       brillo[color] = 0; // Volver a cero cuando alcanza el máximo
     }
   }
   B_brillo = S_brillo;
 
+
   // Actualizar el PWM de los LEDs
   ledcWrite(0, brillo[0]); // PWM del LED rojo
   ledcWrite(1, brillo[1]); // PWM del LED verde
   ledcWrite(2, brillo[2]); // PWM del LED azul
+
+  // Cambiar el color del LED según la posición del servo
+  if (controlServo) {
+    if (servoPosition < 65) {
+      brillo[0] = 255; // Rojo
+      brillo[1] = 0;
+      brillo[2] = 0;
+    } else if (servoPosition < 100) {
+      brillo[0] = 0;
+      brillo[1] = 255; // Verde
+      brillo[2] = 0;
+    } else {
+      brillo[0] = 0;
+      brillo[1] = 0;
+      brillo[2] = 255; // Azul
+    }
+  }
 }
